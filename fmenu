@@ -64,4 +64,6 @@ fzf_open_menu() {
 
 INSTANCE="fmenu"
 EXEC_FROM_X=${1:-false}
-fzf_open_menu
+SKIP_MENU=("${@:2}")
+
+[[ -n $SKIP_MENU ]] && _fzf_open $SKIP_MENU || fzf_open_menu
