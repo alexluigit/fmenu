@@ -16,23 +16,7 @@ __win_float() {
   __wm_set_rule
   "$gui" && __intercept &
 }
-__intercept() {
-  local target=~/.cache/floatwin/fmenu
-  local timeout=1000 exceeded=false
-  counter=0
-  while true; do
-    new_wid=$(xdo id -d -N $CLASS -n $INSTANCE)
-    [[ -n $new_wid ]] && break
-    [[ $counter -gt $timeout ]] && { exceeded=true; break; }
-    sleep .01; counter=$((counter + 1))
-  done
-  $exceeded && notify-send.py -t 1000 "Timeout exceeded."
-  wid=$new_wid
-  W=$(sed -n 1p $target) H=$(sed -n 2p $target)
-  X=$(sed -n 3p $target) Y=$(sed -n 4p $target)
-  xdotool windowmap $wid windowmove $wid $X $Y windowsize $wid $W $H
-  echo $wid >> $target
-}
+__intercept() { command -v floatwin >/dev/null && floatwin -i mpv:fmenu fmenu; }
 __parse_opt() {
   OPT[2]+="$SYM_OFFSET"
   [[ ${OPT[3]} == "mpv" ]] && { FLAG=(--x11-name=$INSTANCE); return; }
