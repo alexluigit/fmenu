@@ -3,7 +3,6 @@ source ~/.config/zsh/user/dirs.zsh
 declare -a dir_index=(`echo ${(@k)USER_DIRS[@]} | sort`)
 __set_title() { echo -ne "\e]2;$1\007"; }
 __reset_title() { echo -ne "\e]2;Terminal\007"; }
-__wm_set_rule() { bspc rule -a $CLASS:$INSTANCE -o state=floating &>/dev/null; }
 __entries() { for i in ${dir_index[@]}; do echo ${USER_DIRS[$i]}; done; }
 __win_float() {
   local app=$1 gui=false
@@ -13,7 +12,6 @@ __win_float() {
     mpv)     CLASS=mpv;     gui=true;;
     *)       CLASS=$app;;
   esac
-  __wm_set_rule
   "$gui" && __intercept &
 }
 __intercept() { command -v floatwin >/dev/null && floatwin -i mpv:fmenu fmenu; }
