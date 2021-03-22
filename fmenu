@@ -1,27 +1,19 @@
 #!/bin/zsh
-source ~/.config/zsh/user/dirs.zsh
-declare -a dir_index=(`echo ${(@k)USER_DIRS[@]} | sort`)
-__set_title() { echo -ne "\e]2;$1\007"; }
-__reset_title() { echo -ne "\e]2;Terminal\007"; }
-__entries() { for i in ${dir_index[@]}; do echo ${USER_DIRS[$i]}; done; }
-__win_float() {
-  local app=$1 gui=false
-  case $app in
-    sxiv)    CLASS=Sxiv;    gui=true;;
-    zathura) CLASS=Zathura; gui=true;;
-    mpv)     CLASS=mpv;     gui=true;;
-    *)       CLASS=$app;;
-  esac
-  "$gui" && __intercept &
-}
-__intercept() { command -v floatwin >/dev/null && floatwin -i mpv:fmenu fmenu; }
-__parse_opt() {
-  OPT[2]+="$SYM_OFFSET"
-  [[ ${OPT[3]} == "mpv" ]] && { FLAG=(--x11-name=$INSTANCE); return; }
-  [[ ${OPT[3]} == "sxiv" ]] && { FLAG=(-N $INSTANCE); return; }
-}
-
-_fzf_open() {
+fzf_open() {
+  _win_float() {
+    __intercept() {
+      [[ -n "$1" ]] && local from_inst="-f $1"
+      floatwin $from_inst -i $CLASS:$INSTANCE -n $SUFFIX fmenu
+    }
+    local app=$1 gui=false inst=
+    case $app in
+      sxiv)    CLASS=Sxiv;    gui=true;;
+      zathura) CLASS=Zathura; gui=true; inst=org.pwmt.zathura;;
+      mpv)     CLASS=mpv;     gui=true;;
+      *)       CLASS=$app;;
+    esac
+    "$gui" && command -v floatwin >/dev/null && __intercept $inst &
+  }
   local ignore dir="$1" app="$3"
   local fd_cmd=(fd -tf -H -L -c always)
   local fzf_cmd=(fzf --height=100% -m --ansi --preview=\"preview {}\" --prompt=\"$2\")
@@ -30,22 +22,28 @@ _fzf_open() {
   [[ $dir='/' ]] && ignore=(--ignore-file ~/.config/fd/root); cd $dir
   local res=`eval ${fd_cmd[@]} ${ignore[@]} | eval ${fzf_cmd[@]}`
   [[ -n $res ]] && IFS='' && {
-    "$EXEC_FROM_X" && __win_float $app
-    __set_title $app
+    [[ "$SUFFIX" != 0 ]] && _win_float $app
     echo $res | eval "${xargs_cmd[@]}"
-    __reset_title
   }; unset IFS
   cd -; zle reset-prompt 2>/dev/null
   zle-line-init 2>/dev/null
 }
 
 fzf_open_menu() {
-  OPT=(`__entries | fzf --height=100% --prompt="Open: " --with-nth 2,4..`)
-  [[ -n $OPT ]] && { __parse_opt; _fzf_open ${OPT[@]}; } || zle reset-prompt 2>/dev/null
+  _entries() { for i in ${dir_index[@]}; do echo ${USER_DIRS[$i]}; done; }
+  _parse_opt() {
+    OPT[2]+="$SYM_OFFSET"
+    [[ ${OPT[3]} == "mpv" ]] && { FLAG=(--x11-name=$INSTANCE.$SUFFIX); return; }
+    [[ ${OPT[3]} == "sxiv" ]] && { FLAG=(-N $INSTANCE.$SUFFIX); return; }
+  }
+  OPT=(`_entries | fzf --height=100% --prompt="Open: " --with-nth 2,4..`)
+  [[ -n $OPT ]] && { _parse_opt; fzf_open ${OPT[@]}; } || zle reset-prompt 2>/dev/null
 }
 
+source ~/.config/zsh/user/dirs.zsh
+declare -a dir_index=(`for d in ${(@k)USER_DIRS[@]}; do echo $d; done | sort`)
 INSTANCE="fmenu"
-EXEC_FROM_X=${1:-false}
+SUFFIX=${1:-0}
 SKIP_MENU=("${@:2}")
 
-[[ -n $SKIP_MENU ]] && _fzf_open $SKIP_MENU || fzf_open_menu
+[[ -n $SKIP_MENU ]] && fzf_open $SKIP_MENU || fzf_open_menu
