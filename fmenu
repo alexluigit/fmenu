@@ -1,49 +1,24 @@
 #!/bin/zsh
-fzf_open() {
-  _win_float() {
-    __intercept() {
-      [[ -n "$1" ]] && local from_inst="-f $1"
-      floatwin $from_inst -i $CLASS:$INSTANCE -n $SUFFIX fmenu
-    }
-    local app=$1 gui=false inst=
-    case $app in
-      sxiv)    CLASS=Sxiv;    gui=true;;
-      zathura) CLASS=Zathura; gui=true; inst=org.pwmt.zathura;;
-      mpv)     CLASS=mpv;     gui=true;;
-      *)       CLASS=$app;;
-    esac
-    "$gui" && command -v floatwin >/dev/null && __intercept $inst &
-  }
-  local ignore dir="$1" app="$3"
-  local fd_cmd=(fd -tf -H -L -c always)
-  local fzf_cmd=(fzf --height=100% -m --ansi --preview=\"preview {}\" --prompt=\"$2\")
-  local xargs_cmd=(xargs -ro -d \'\\n\' "$app")
-  [[ -n $FLAG ]] && xargs_cmd+=("${FLAG[@]}")
-  [[ $dir='/' ]] && ignore=(--ignore-file ~/.config/fd/root); cd $dir
-  local res=`eval ${fd_cmd[@]} ${ignore[@]} | eval ${fzf_cmd[@]}`
-  [[ -n $res ]] && IFS='' && {
-    [[ "$SUFFIX" != 0 ]] && _win_float $app
-    echo $res | eval "${xargs_cmd[@]}"
-  }; unset IFS
-  cd -; zle reset-prompt 2>/dev/null
-  zle-line-init 2>/dev/null
 }
 
-fzf_open_menu() {
+_fzf_menu() {
   _entries() { for i in ${dir_index[@]}; do echo ${USER_DIRS[$i]}; done; }
-  _parse_opt() {
-    OPT[2]+="$SYM_OFFSET"
-    [[ ${OPT[3]} == "mpv" ]] && { FLAG=(--x11-name=$INSTANCE.$SUFFIX); return; }
-    [[ ${OPT[3]} == "sxiv" ]] && { FLAG=(-N $INSTANCE.$SUFFIX); return; }
+  _parse_opt() { OPT[2]+="${SYM_OFFSET:- }"; }
+  _fzf_open() {
+    local ignore dir="$1" app="$3"
+    local fd_cmd=(fd -tf -H -L -c always)
+    local fzf_cmd=(fzf --height=100% -m --ansi --preview=\"preview {}\" --prompt=\"$2\")
+    local xargs_cmd=(xargs -ro -d \'\\n\' "$app")
+    [[ $dir='/' ]] && ignore=(--ignore-file ~/.config/fd/root); cd $dir
+    local res=`eval ${fd_cmd[@]} ${ignore[@]} | eval ${fzf_cmd[@]}`
+    local detach=$([[ $app =~ ".*vim|emacs(client)?" ]] || echo " & disown")
+    [[ -n $res ]] && IFS='' && {
+      echo $res | eval "${xargs_cmd[@]} $detach"
+    }; unset IFS
+    cd -; zle reset-prompt 2>/dev/null; zle-line-init 2>/dev/null
   }
   OPT=(`_entries | fzf --height=100% --prompt="Open: " --with-nth 2,4..`)
-  [[ -n $OPT ]] && { _parse_opt; fzf_open ${OPT[@]}; } || zle reset-prompt 2>/dev/null
+  [[ -n $OPT ]] && { _parse_opt; _fzf_open ${OPT[@]}; } || zle reset-prompt 2>/dev/null
 }
 
 source ~/.config/zsh/user/dirs.zsh
-declare -a dir_index=(`for d in ${(@k)USER_DIRS[@]}; do echo $d; done | sort`)
-INSTANCE="fmenu"
-SUFFIX=${1:-0}
-SKIP_MENU=("${@:2}")
-
-[[ -n $SKIP_MENU ]] && fzf_open $SKIP_MENU || fzf_open_menu
