@@ -43,6 +43,6 @@ _fzf_menu() {
 f() {
   case $1 in
       "")    _fzf_menu $@;;
-      "nav") _fzf_navi ${@:1};;
+      "nav") _fzf_navi ${@:2};;
   esac
 }
